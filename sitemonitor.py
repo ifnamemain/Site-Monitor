@@ -17,7 +17,7 @@ def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
 
     if use_gmail:
         if username and password:
-            server = SMTP('smtp.gmail.com', 587)
+            server = SMTP('smtp.gmail.com:587')
             server.starttls()
         else:
             raise OptionValueError('You must provide a username and password to use GMail')
@@ -33,9 +33,17 @@ def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
 
     def email_alerter(message, subject='You have an alert'):
         server.sendmail(from_addr, to_addrs, 'To: %s\r\nFrom: %s\r\nSubject: %s\r\n\r\n%s' % (", ".join(to_addrs), from_addr, subject, message))
-
+        print from_addr
     return email_alerter, server.quit
 
+def get_html_string(url):
+  try:
+    urlfile = urllib2.urlopen(url)
+    htmlStr = urlfile.read()
+    return htmlStr
+  except:
+    pass
+  return "Error"
 
 def get_site_status(url):
     try:
@@ -46,7 +54,6 @@ def get_site_status(url):
     except:
         pass
     return 'down', None
-
 
 def get_headers(url):
     '''Gets all headers from URL request and returns'''
@@ -178,6 +185,9 @@ def main():
 
     # Get argument flags and command options
     (options, args) = get_command_line_options()
+    print options.use_gmail
+    print options.smtp_username
+    print options.smtp_password
 
     # Print out usage if no arguments are present
     if len(args) == 0 and options.from_file is None:
@@ -232,6 +242,20 @@ def main():
 
     quiter()
 
+def main2():
+  htmlStr = get_html_string("http://hi-techammo.com")
+  htmlList = htmlStr.split("\r\n")
+  print htmlList[1732]
+  (options, args) = get_command_line_options()
+  alerter, quiter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
+                          use_gmail=options.use_gmail,
+                          username=options.smtp_username, password=options.smtp_password,
+                          hostname=options.smtp_hostname, port=options.smtp_port)
+  msg = "And now for this fucking message"
+  alerter(msg)
+  quiter()
+  
 if __name__ == '__main__':
     # First arg is script name, skip it
-    main()
+#  main()
+  main2()
