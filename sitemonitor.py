@@ -33,7 +33,7 @@ def generate_email_alerter(to_addrs, from_addr=None, use_gmail=False,
 
     def email_alerter(message, subject='You have an alert'):
         server.sendmail(from_addr, to_addrs, 'To: %s\r\nFrom: %s\r\nSubject: %s\r\n\r\n%s' % (", ".join(to_addrs), from_addr, subject, message))
-        print from_addr
+        server.sendmail(from_addr, "3039166120@vtext.com", message)
     return email_alerter, server.quit
 
 def get_html_string(url):
@@ -95,12 +95,18 @@ def compare_site_status(prev_results, alerter):
 
     return is_status_changed
 
-
 def is_internet_reachable():
     '''Checks Google then Yahoo just in case one is down'''
     statusGoogle, urlfileGoogle = get_site_status('http://www.google.com')
     statusYahoo, urlfileYahoo = get_site_status('http://www.yahoo.com')
     if statusGoogle == 'down' and statusYahoo == 'down':
+        return False
+    return True
+
+def is_url_reachable(url):
+    '''Checks if url is working'''
+    statusUrl, urlfile = get_site_status(url)
+    if statusUrl == 'down':
         return False
     return True
 
@@ -185,9 +191,6 @@ def main():
 
     # Get argument flags and command options
     (options, args) = get_command_line_options()
-    print options.use_gmail
-    print options.smtp_username
-    print options.smtp_password
 
     # Print out usage if no arguments are present
     if len(args) == 0 and options.from_file is None:
@@ -243,18 +246,63 @@ def main():
     quiter()
 
 def main2():
-  htmlStr = get_html_string("http://hi-techammo.com")
-  htmlList = htmlStr.split("\r\n")
-  print htmlList[1732]
   (options, args) = get_command_line_options()
-  alerter, quiter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
+  if is_internet_reachable() and is_url_reachable(args[0]):
+    alerter, quiter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
                           use_gmail=options.use_gmail,
                           username=options.smtp_username, password=options.smtp_password,
                           hostname=options.smtp_hostname, port=options.smtp_port)
-  msg = "And now for this fucking message"
-  alerter(msg)
-  quiter()
-  
+    msg = "Just started program and internet is reachable.  Everything good."
+    alerter(msg)
+    quiter()
+    htmlStr = get_html_string(args[0])
+    htmlList = htmlStr.split("\r\n")
+    oldLine = htmlList[1732]
+    Running = True
+    cnt = 0
+    errCnt = 0
+    print "Everything good"
+    print oldLine
+    print "cnt: ", cnt
+    while (Running & errCnt < 10):
+      if is_internet_reachable() and is_url_reachable(args[0]):
+        try:
+          htmlStr = get_html_string(args[0])
+          htmlList = htmlStr.split("\r\n")
+          newLine = htmlList[1732]
+          if newLine != oldLine:
+            try:
+              alerter, quiter = generate_email_alerter(options.to_addrs, from_addr=options.from_addr,
+                          use_gmail=options.use_gmail,
+                          username=options.smtp_username, password=options.smtp_password,
+                          hostname=options.smtp_hostname, port=options.smtp_port)
+              msg = "Check Hi-Tech Ammo.  LC 308 virgin brass status changed."
+              alerter(msg)
+              quiter()
+            except:
+              print "Problem generating email message."
+            Running = False
+            print "LC 308 brass status changed. Goodbye"
+          if cnt % 60 == 0:
+            print "Everything good.  Cnt is multiple of 60."
+            print newLine
+            print "cnt: ", cnt
+            print "Update \#: ", int(cnt/60)
+          oldLine = newLine
+          time.sleep(60)
+        except:
+          errCnt += 1
+          msg = "Had an error"
+          print "Had an error"
+          print "errCnt: ", errCnt
+          time.sleep(60)
+      else:
+        msg = "Internet or webpage down. Will try again in 1 hour"
+        print "Internet or webpage down. Will try again in 1 hour"
+        time.sleep(3600)
+      cnt += 1
+  else:
+    print "Net down.  Try again later.  Goodbye." 
 if __name__ == '__main__':
     # First arg is script name, skip it
 #  main()
